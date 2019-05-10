@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/plugins/movingTrafficSigns" >
+        <file>resources/mActionGetInfo.svg</file>
+        <file>resources/mActionSetEndPoint.svg</file>
+        <file>resources/mActionDeleteTrack.svg</file>
+    </qresource>
+</RCC>
