@@ -25,7 +25,7 @@
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
-from movingTrafficSigns_dialog import movingTrafficSignsDialog
+#from movingTrafficSigns_dialog import movingTrafficSignsDialog
 import os.path
 
 from PyQt4.QtGui import (
@@ -66,6 +66,8 @@ import numpy as np
 import functools
 import datetime
 import time
+
+from .mapTools import GeometryInfoMapTool, CreateSignTool
 
 try:
     import cv2
@@ -108,6 +110,8 @@ class movingTrafficSigns:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'movingTrafficSigns')
         self.toolbar.setObjectName(u'movingTrafficSigns')
+
+        self.demandUtils = demandFormUtils(self.iface)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -176,7 +180,7 @@ class movingTrafficSigns:
         """
 
         # Create the dialog (after translation) and keep reference
-        self.dlg = movingTrafficSignsDialog()
+        #self.dlg = movingTrafficSignsDialog()
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
@@ -227,7 +231,6 @@ class movingTrafficSigns:
                                self.iface.mainWindow())
         self.actionRemoveSign.setCheckable(True)
 
-
         self.toolbar.addAction(self.actionCreateMovingTrafficSign)
         self.toolbar.addAction(self.actionSignDetails)
         self.toolbar.addAction(self.actionRemoveSign)
@@ -235,6 +238,9 @@ class movingTrafficSigns:
         self.actionCreateMovingTrafficSign.triggered.connect(self.doCreateMovingTrafficSign)
         self.actionSignDetails.triggered.connect(self.doSignDetails)
         self.actionRemoveSign.triggered.connect(self.doRemoveSign)
+
+        self.actionCreateMovingTrafficSign.toggled.connect(self.actionToggled)
+        self.actionCreateMovingTrafficSign.triggered.connect(self.actionTriggered)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -249,207 +255,224 @@ class movingTrafficSigns:
     def doSignDetails(self):
         """ Select point and then display details
         """
-
         QgsMessageLog.logMessage("In doSignDetails", tag="TOMs panel")
 
-        #self.proposalsManager.TOMsToolChanged.emit()
+        #self.demandUtils.signToolChanged.emit()
+        #self.demandUtils.signToolChanged.connect(self.actionToggled)
+        #self.mapTool = None
 
-        self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
+        if self.actionSignDetails.isChecked():
 
-        if self.currLayer.startEditing() == False:
+            QgsMessageLog.logMessage("In doSignDetails - tool activated", tag="TOMs panel")
+
+            self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
+
+            self.iface.setActiveLayer(self.currLayer)
+            if not self.actionSignDetails.isChecked():
+                QgsMessageLog.logMessage("In doSignDetails - resetting mapTool", tag="TOMs panel")
+                self.actionSignDetails.setChecked(False)
+                self.iface.mapCanvas().unsetMapTool(self.mapTool)
+                self.mapTool = None
+                # self.actionPan.connect()
+                return
+
+            self.actionSignDetails.setChecked(True)
+
+            self.mapTool = GeometryInfoMapTool(self.iface)
+            self.mapTool.setAction(self.actionSignDetails)
+            self.iface.mapCanvas().setMapTool(self.mapTool)
+
+            self.mapTool.notifyFeatureFound.connect(self.showSignDetails)
+
+        else:
+
+            QgsMessageLog.logMessage("In doSignDetails - tool deactivated", tag="TOMs panel")
+
+            self.mapTool.notifyFeatureFound.disconnect(self.showSignDetails)
+            self.iface.mapCanvas().unsetMapTool(self.mapTool)
+            #del self.mapTool
+            self.mapTool = None
+            self.actionSignDetails.setChecked(False)
+
+
+    @pyqtSlot(str)
+    def showSignDetails(self, closestLayer, closestFeature):
+
+        QgsMessageLog.logMessage(
+            "In showSignDetails ... Layer: " + str(closestLayer.name()),
+            tag="TOMs panel")
+
+        if closestLayer.startEditing() == False:
             reply = QMessageBox.information(None, "Information",
                                             "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
             return
 
-        self.iface.setActiveLayer(self.currLayer)
-        if not self.actionSignDetails.isChecked():
-            self.actionSignDetails.setChecked(False)
-            self.iface.mapCanvas().unsetMapTool(self.mapTool)
-            self.mapTool = None
-            # self.actionPan.connect()
-            return
-
-        self.actionSignDetails.setChecked(True)
-
-        self.mapTool = GeometryInfoMapTool(self.iface)
-        self.mapTool.setAction(self.actionSignDetails)
-        self.iface.mapCanvas().setMapTool(self.mapTool)
-
+        # TODO: Sort out this for UPDATE
+        # self.setDefaultRestrictionDetails(closestFeature, closestLayer)
+        dialog = self.iface.getFeatureForm(closestLayer, closestFeature)
+        self.demandUtils.setupDemandDialog(dialog, closestLayer, closestFeature)  # connects signals, etc
+        dialog.show()
 
 
     def doCreateMovingTrafficSign(self):
 
         QgsMessageLog.logMessage("In doCreateMovingTrafficSign", tag="TOMs panel")
 
-        #self.proposalsManager.TOMsToolChanged.emit()
-
-        self.mapTool = None
-
-        # Get the current proposal from the session variables
-        #currProposalID = self.proposalsManager.currentProposal()
-
-        #if currProposalID > 0:
+        #self.demandUtils.signToolChanged.emit()
 
         if self.actionCreateMovingTrafficSign.isChecked():
-            # self.iface.mapCanvas().setMapTool(CreateRestrictionTool)
-            # self.actionCreateRestiction.setChecked(True)
-
-            # set TOMs layer as active layer (for editing)...
 
             QgsMessageLog.logMessage("In doCreateMovingTrafficSign - tool activated", tag="TOMs panel")
 
-            #self.restrictionTransaction.startTransactionGroup()  # start editing
-
             self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
-
-            if self.currLayer.startEditing() == False:
-                reply = QMessageBox.information(None, "Information", "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
-                return
-
-            #currLayer = self.tableNames.BAYS
 
             self.iface.setActiveLayer(self.currLayer)
 
-            #self.restrictionTransaction.startTransactionGroup()  # start editing
+            #self.actionCreateMovingTrafficSign.setChecked(True)
 
             self.mapTool = CreateSignTool(self.iface, self.currLayer)
 
             self.mapTool.setAction(self.actionCreateMovingTrafficSign)
             self.iface.mapCanvas().setMapTool(self.mapTool)
 
-            #self.currLayer.featureAdded.connect(self.proposalsManager.updateMapCanvas)
-
-            #self.currLayer.editingStopped.connect (self.proposalsManager.updateMapCanvas)
+            self.mapTool.notifyNewFeature.connect(self.createNewSign)
+            self.currLayer.editingStopped.connect(self.layerEditingStopped)
 
         else:
 
             QgsMessageLog.logMessage("In doCreateMovingTrafficSign - tool deactivated", tag="TOMs panel")
 
+            self.mapTool.notifyNewFeature.disconnect(self.createNewSign)
             self.iface.mapCanvas().unsetMapTool(self.mapTool)
-            self.mapTool = None
-            self.actionCreateMovingTrafficSign.setChecked(False)
+            del self.mapTool
+            #self.mapTool = None
+            #self.actionCreateMovingTrafficSign.setChecked(False)
 
-            #self.currLayer.featureAdded.disconnect(self.proposalsManager.updateMapCanvas)
+    @pyqtSlot(str)
+    def actionToggled(self, answer):
+        QgsMessageLog.logMessage(
+            ("In actionToggled: ..."),
+            tag="TOMs panel")
 
-            #self.currLayer.editingStopped()
+    @pyqtSlot(str)
+    def actionTriggered(self, answer):
+        QgsMessageLog.logMessage(
+            ("In actionTriggered: ..."),
+            tag="TOMs panel")
 
-        """else:
+    @pyqtSlot(str)
+    def layerEditingStopped(self, answer):
+        QgsMessageLog.logMessage(
+            ("In layerEditingStopped: ..."),
+            tag="TOMs panel")
 
-            if self.actionCreateBayRestriction.isChecked():
-                self.actionCreateBayRestriction.setChecked(False)
-                if self.mapTool == None:
-                    self.actionCreateBayRestriction.setChecked(False)
+    @pyqtSlot(str)
+    def createNewSign(self, sketchPoints):
 
-            reply = QMessageBox.information(self.iface.mainWindow(), "Information", "Changes to current data is not allowed. Changes are made via Proposals",
-                                            QMessageBox.Ok)
+        QgsMessageLog.logMessage(
+            ("In createNewSign, layerType: " + str(self.currLayer.geometryType())),
+            tag="TOMs panel")
 
-        pass"""
+        self.sketchPoints = sketchPoints
+
+        if self.currLayer.startEditing() == False:
+            reply = QMessageBox.information(None, "Information",
+                                            "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
+            return
+
+        fields = self.currLayer.dataProvider().fields()
+        feature = QgsFeature()
+        feature.setFields(fields)
+
+        if self.currLayer.geometryType() == 0:  # Point
+            feature.setGeometry(QgsGeometry.fromPoint(self.sketchPoints[0]))
+        elif self.currLayer.geometryType() == 1:  # Line
+            feature.setGeometry(QgsGeometry.fromPolyline(self.sketchPoints))
+        elif self.currLayer.geometryType() == 2:  # Polygon
+            feature.setGeometry(QgsGeometry.fromPolygon([self.sketchPoints]))
+            # feature.setGeometry(QgsGeometry.fromPolygon(self.sketchPoints))
+        else:
+            QgsMessageLog.logMessage(("In CreateRestrictionTool - no geometry type found"), tag="TOMs panel")
+            return
+
+        QgsMessageLog.logMessage(
+            ("In Create - getPointsCaptured; geometry prepared; " + str(feature.geometry().exportToWkt())),
+            tag="TOMs panel")
+
+        # set any geometry related attributes ...
+
+        self.demandUtils.setDefaultRestrictionDetails(feature, self.currLayer)
+
+        dialog = self.iface.getFeatureForm(self.currLayer, feature)
+        self.demandUtils.setupDemandDialog(dialog, self.currLayer, feature)  # connects signals, etc
+        dialog.show()
 
     def doRemoveSign(self):
 
         QgsMessageLog.logMessage("In doRemoveSign", tag="TOMs panel")
 
-        #self.proposalsManager.TOMsToolChanged.emit()
+        #self.demandUtils.signToolChanged.emit()
 
         #self.mapTool = None
 
-        # Get the current proposal from the session variables
-        #self.currProposalID = self.proposalsManager.currentProposal()
+        if self.actionRemoveSign.isChecked():
 
-        if self.currProposalID > 0:
+            QgsMessageLog.logMessage("In doSignDetails - tool activated", tag="TOMs panel")
 
-            currRestrictionLayer = self.iface.activeLayer()
+            self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
 
-            #currRestrictionLayer.editingStopped.connect(self.proposalsManager.updateMapCanvas)
+            self.iface.setActiveLayer(self.currLayer)
+            if not self.actionRemoveSign.isChecked():
+                QgsMessageLog.logMessage("In doSignDetails - resetting mapTool", tag="TOMs panel")
+                self.actionRemoveSign.setChecked(False)
+                self.iface.mapCanvas().unsetMapTool(self.mapTool)
+                self.mapTool = None
+                # self.actionPan.connect()
+                return
 
-            if currRestrictionLayer:
+            self.actionRemoveSign.setChecked(True)
 
-                QgsMessageLog.logMessage("In doRemoveRestriction. currLayer: " + str(currRestrictionLayer.name()), tag="TOMs panel")
+            self.mapTool = GeometryInfoMapTool(self.iface)
+            self.mapTool.setAction(self.actionRemoveSign)
+            self.iface.mapCanvas().setMapTool(self.mapTool)
 
-                if currRestrictionLayer.selectedFeatureCount() > 0:
-
-                    selectedRestrictions = currRestrictionLayer.selectedFeatures()
-
-                    self.restrictionTransaction.startTransactionGroup()
-
-                    for currRestriction in selectedRestrictions:
-                        self.onRemoveRestriction(currRestrictionLayer, currRestriction)
-
-                else:
-
-                    reply = QMessageBox.information(self.iface.mainWindow(), "Information",
-                                                    "Select restriction for delete",
-                                                    QMessageBox.Ok)
-
-            pass
+            self.mapTool.notifyFeatureFound.connect(self.removeSign)
 
         else:
 
-            """if self.actionRemoveRestriction.isChecked():
-                self.actionRemoveRestriction.setChecked(False)
-                if self.mapTool == None:
-                    self.actionRemoveRestriction.setChecked(False)"""
+            QgsMessageLog.logMessage("In doSignDetails - tool deactivated", tag="TOMs panel")
 
-            reply = QMessageBox.information(self.iface.mainWindow(), "Information", "Changes to current data are not allowed. Changes are made via Proposals",
-                                            QMessageBox.Ok)
+            self.mapTool.notifyFeatureFound.disconnect(self.removeSign)
+            self.iface.mapCanvas().unsetMapTool(self.mapTool)
+            del self.mapTool
+            self.actionRemoveSign.setChecked(False)
 
-        pass
 
-    def onRemoveRestriction(self, currRestrictionLayer, currRestriction):
-        QgsMessageLog.logMessage("In onRemoveRestriction. currLayer: " + str(currRestrictionLayer.id()) + " CurrFeature: " + str(currRestriction.id()), tag="TOMs panel")
 
-        #self.currRestrictionLayer = currRestrictionLayer
-        #self.currRestriction = currRestriction
+    @pyqtSlot(str)
+    def removeSign(self, closestLayer, closestFeature):
 
-        currProposalID = self.proposalsManager.currentProposal()
+        QgsMessageLog.logMessage(
+            "In removeSign ... Layer: " + str(closestLayer.name()),
+            tag="TOMs panel")
 
-        currRestrictionLayerID = self.getRestrictionLayerTableID(currRestrictionLayer)
+        if self.currLayer.startEditing() == False:
+            reply = QMessageBox.information(None, "Information",
+                                            "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
+            return
 
-        idxRestrictionID = currRestriction.fieldNameIndex("RestrictionID")
+        # TODO: Sort out this for UPDATE
+        # self.setDefaultRestrictionDetails(closestFeature, closestLayer)
 
-        if self.restrictionInProposal(currRestriction[idxRestrictionID], currRestrictionLayerID, currProposalID):
-            # remove the restriction from the RestrictionsInProposals table - and from the currLayer, i.e., it is totally removed.
-            # NB: This is the only case of a restriction being truly deleted
+        closestLayer.deleteFeature(closestFeature.id())
 
-            QgsMessageLog.logMessage("In onRemoveRestriction. Removing from RestrictionsInProposals and currLayer.", tag="TOMs panel")
-
-            # Delete from RestrictionsInProposals
-            result = self.deleteRestrictionInProposal(currRestriction[idxRestrictionID], currRestrictionLayerID, currProposalID)
-
-            if result:
-                QgsMessageLog.logMessage("In onRemoveRestriction. Deleting restriction id: " + str(currRestriction.id()),
-                                         tag="TOMs panel")
-                deleteStatus = currRestrictionLayer.deleteFeature(currRestriction.id())
-                QgsMessageLog.logMessage("In onRemoveRestriction. deleteStatus: " + str(deleteStatus),
-                                     tag="TOMs panel")
-
-            else:
-                QMessageBox.information(None, "ERROR", ("Error deleting restriction ..."))
-
+        if closestLayer.commitChanges() == False:
+            reply = QMessageBox.information(None, "Information", "Problem committing changes" + str(closestLayer.commitErrors()), QMessageBox.Ok)
         else:
-            # need to:
-            #    - enter the restriction into the table RestrictionInProposals as closed, and
-            #
-            QgsMessageLog.logMessage("In onRemoveRestriction. Closing existing restriction.",
-                                     tag="TOMs panel")
-
-            self.addRestrictionToProposal(currRestriction[idxRestrictionID], currRestrictionLayerID, currProposalID,
-                                                          ACTION_CLOSE_RESTRICTION())  # 2 = Close
-
-        # Now save all changes
-
-        # Trying to unset map tool to force updates ...
-        #self.iface.mapCanvas().unsetMapTool(self.iface.mapCanvas().mapTool())
-
-        self.restrictionTransaction.commitTransactionGroup(None)
-        #self.restrictionTransaction.deleteTransactionGroup()
-
-        #currRestrictionLayer.triggerRepaint()  # This shouldn't be required ...
-
-
-
+            QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
 
 class demandFormUtils():
+    #signToolChanged = QtCore.pyqtSignal()
     def __init__(self, iface):
         self.iface = iface
 
@@ -476,7 +499,6 @@ class demandFormUtils():
         self.currDemandLayer = currDemandLayer
         self.currFeature = currFeature
         # self.restrictionTransaction = restrictionTransaction
-
 
         if self.demandDialog is None:
             QgsMessageLog.logMessage(
@@ -507,7 +529,8 @@ class demandFormUtils():
         except:
             None
 
-        button_box.rejected.connect(self.onRejectDemandDetailsFromForm)
+        button_box.rejected.connect(functools.partial(self.onRejectDemandDetailsFromForm, currFeature,
+                                                      currDemandLayer, self.demandDialog))
 
         self.demandDialog.attributeForm().attributeChanged.connect(
             functools.partial(self.onAttributeChangedClass2, self.currFeature, self.currDemandLayer))
@@ -523,23 +546,60 @@ class demandFormUtils():
             None
 
         attrs1 = currFeature.attributes()
-        QgsMessageLog.logMessage("In onSaveRestrictionDetails: currRestriction: " + str(attrs1),
+        QgsMessageLog.logMessage("In onSaveDemandDetails: currRestriction: " + str(attrs1),
                                  tag="TOMs panel")
 
-        if currFeatureLayer.updateFeature(currFeature) == False:
+        QgsMessageLog.logMessage(
+            ("In onSaveDemandDetails. geometry: " + str(currFeature.geometry().exportToWkt())),
+            tag="TOMs panel")
+
+        currFeatureID = currFeature.id()
+        QgsMessageLog.logMessage("In onSaveDemandDetails: currFeatureID: " + str(currFeatureID),
+                                 tag="TOMs panel")
+
+        if currFeatureID > 0:   # Not sure what this value should if the feature has not been created ...
+            status = currFeatureLayer.updateFeature(currFeature)
+            QgsMessageLog.logMessage("In onSaveDemandDetails: updated Feature: ", tag="TOMs panel")
+        else:
             status = currFeatureLayer.addFeature(currFeature)
             QgsMessageLog.logMessage("In onSaveDemandDetails: added Feature: " + str(status), tag="TOMs panel")
-        else:
-            QgsMessageLog.logMessage("In onSaveDemandDetails: updated Feature: ", tag="TOMs panel")
 
-        if currFeatureLayer.commitChanges() == False:
+        QgsMessageLog.logMessage("In onSaveDemandDetails: Before commit", tag="TOMs panel")
+
+        reply = QMessageBox.information(None, "Information",
+                                        "Wait a moment ...",
+                                        QMessageBox.Ok)
+        attrs1 = currFeature.attributes()
+        QgsMessageLog.logMessage("In onSaveDemandDetails: currRestriction: " + str(attrs1),
+                                 tag="TOMs panel")
+
+        self.iface.activeLayer()
+        QgsMessageLog.logMessage(
+            ("In onSaveDemandDetails. geometry: " + str(currFeature.geometry().exportToWkt())),
+            tag="TOMs panel")
+
+        QgsMessageLog.logMessage("In onSaveDemandDetails: currActiveLayer: " + str(self.iface.activeLayer().name()),
+                                 tag="TOMs panel")
+
+        #Test
+        status = dialog.accept()
+
+        reply = QMessageBox.information(None, "Information",
+                                        "And another ... iseditable: " + str(currFeatureLayer.isEditable()),
+                                        QMessageBox.Ok)
+
+        try:
+            currFeatureLayer.commitChanges()
+        except:
             reply = QMessageBox.information(None, "Information", "Problem committing changes" + str(currFeatureLayer.commitErrors()), QMessageBox.Ok)
-        else:
-            QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
+            return
 
-        status = dialog.close()
 
-    def onRejectDemandDetailsFromForm(self):
+        QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
+
+
+
+    def onRejectDemandDetailsFromForm(self, currFeature, currFeatureLayer, dialog):
         QgsMessageLog.logMessage("In onRejectDemandDetailsFromForm", tag="TOMs panel")
         # self.currDemandLayer.destroyEditCommand()
 
@@ -548,9 +608,9 @@ class demandFormUtils():
         except:
             None
 
-        self.demandDialog.reject()
+        dialog.reject()
 
-        if self.currDemandLayer.rollBack() == False:
+        if currFeatureLayer.rollBack() == False:
             reply = QMessageBox.information(None, "Information", "Problem rolling back changes", QMessageBox.Ok)
         else:
             QgsMessageLog.logMessage("In onRejectDemandDetailsFromForm: rollBack successful ...", tag="TOMs panel")
@@ -574,13 +634,6 @@ class demandFormUtils():
                                                 layer.name()) + " (" + fieldName + "): " + str(value),
                                             QMessageBox.Ok)  # rollback all changes
         return
-
-    def transformCoordinates(self, screenPt):
-        """ Convert a screen coordinate to map and layer coordinates.
-
-            returns a (mapPt,layerPt) tuple.
-        """
-        return (self.toMapCoordinates(screenPt))
 
     def photoDetails(self):
 
@@ -738,344 +791,6 @@ class demandFormUtils():
                                                 "savePhotoTaken. problem changing attrib value",
                                                 QMessageBox.Ok)
 
-#############################################################################
-
-class GeometryInfoMapTool(QgsMapToolIdentify, demandFormUtils):
-    def __init__(self, iface):
-        QgsMapToolIdentify.__init__(self, iface.mapCanvas())
-        self.iface = iface
-
-    def canvasReleaseEvent(self, event):
-        # Return point under cursor
-
-        self.event = event
-
-        closestFeature, closestLayer = self.findNearestFeatureAtC(event.pos())
-
-        QgsMessageLog.logMessage(("In Info - canvasReleaseEvent."), tag="TOMs panel")
-
-        # Remove any current selection and add the new ones (if appropriate)
-
-        if closestLayer == None:
-
-            if self.iface.activeLayer():
-                self.iface.activeLayer().removeSelection()
-
-        else:
-
-            QgsMessageLog.logMessage(
-                ("In Info - canvasReleaseEvent. Feature selected from layer: " + closestLayer.name() + " id: " + str(
-                    closestFeature.id())),
-                tag="TOMs panel")
-
-            if closestLayer <> self.iface.activeLayer():
-                if self.iface.activeLayer():
-                    self.iface.activeLayer().removeSelection()
-                self.iface.setActiveLayer(closestLayer)
-
-            if closestLayer.type() == QgsMapLayer.VectorLayer:
-                QgsMessageLog.logMessage(("In Info - canvasReleaseEvent. layer type " + str(closestLayer.type())),
-                                         tag="TOMs panel")
-
-            if closestLayer.geometryType() == QGis.Point:
-                QgsMessageLog.logMessage(("In Info - canvasReleaseEvent. point layer type "), tag="TOMs panel")
-
-            if closestLayer.geometryType() == QGis.Line:
-                QgsMessageLog.logMessage(("In Info - canvasReleaseEvent. line layer type "), tag="TOMs panel")
-
-            # TODO: Sort out this for UPDATE
-            # self.setDefaultRestrictionDetails(closestFeature, closestLayer)
-
-            QgsMessageLog.logMessage(
-                "In GeometryInfoMapTool - releaseEvent. currRestrictionLayer: " + str(closestLayer.name()),
-                tag="TOMs panel")
-
-            dialog = self.iface.getFeatureForm(closestLayer, closestFeature)
-            self.setupDemandDialog(dialog, closestLayer, closestFeature)  # connects signals, etc
-            dialog.show()
-
-        pass
-
-    def findNearestFeatureAtC(self, pos):
-        #  def findFeatureAt(self, pos, excludeFeature=None):
-        # http://www.lutraconsulting.co.uk/blog/2014/10/17/getting-started-writing-qgis-python-plugins/ - generates "closest feature" function
-
-        """ Find the feature close to the given position.
-
-            'pos' is the position to check, in canvas coordinates.
-
-            if 'excludeFeature' is specified, we ignore this feature when
-            finding the clicked-on feature.
-
-            If no feature is close to the given coordinate, we return None.
-        """
-        mapPt = self.transformCoordinates(pos)
-        tolerance = 0.5
-        searchRect = QgsRectangle(mapPt.x() - tolerance,
-                                  mapPt.y() - tolerance,
-                                  mapPt.x() + tolerance,
-                                  mapPt.y() + tolerance)
-
-        request = QgsFeatureRequest()
-        request.setFilterRect(searchRect)
-        request.setFlags(QgsFeatureRequest.ExactIntersect)
-
-        #self.RestrictionLayers = QgsMapLayerRegistry.instance().mapLayersByName("RestrictionLayers")[0]
-        self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
-
-        featureList = []
-        layerList = []
-
-        # Loop through all features in the layer to find the closest feature
-        for f in self.currLayer.getFeatures(request):
-            # Add any features that are found should be added to a list
-            featureList.append(f)
-            layerList.append(self.currLayer)
-
-        QgsMessageLog.logMessage("In findNearestFeatureAt: nrFeatures: " + str(len(featureList)), tag="TOMs panel")
-
-        if len(featureList) == 0:
-            return None, None
-        elif len(featureList) == 1:
-            return featureList[0], layerList[0]
-        else:
-            # set up a context menu
-            QgsMessageLog.logMessage("In findNearestFeatureAt: multiple features: " + str(len(featureList)),
-                                     tag="TOMs panel")
-
-            feature, layer = self.getFeatureDetails(featureList, layerList)
-
-            QgsMessageLog.logMessage("In findNearestFeatureAt: feature: " + str(feature.attribute('GeometryID')),
-                                     tag="TOMs panel")
-
-            return feature, layer
-
-        pass
-
-    def getFeatureDetails(self, featureList, layerList):
-        QgsMessageLog.logMessage("In getFeatureDetails", tag="TOMs panel")
-
-        self.featureList = featureList
-        self.layerList = layerList
-
-        # Creates the context menu and returns the selected feature and layer
-        QgsMessageLog.logMessage("In getFeatureDetails: nrFeatures: " + str(len(featureList)), tag="TOMs panel")
-
-        self.actions = []
-        self.menu = QMenu(self.iface.mapCanvas())
-
-        for feature in featureList:
-
-            try:
-
-                title = feature.attribute('id')
-                QgsMessageLog.logMessage("In featureContextMenu: adding: " + str(title), tag="TOMs panel")
-
-            except TypeError:
-
-                title = " (" + feature.attribute('SignType_1') + ")"
-
-            action = QAction(title, self.menu)
-            self.actions.append(action)
-
-            self.menu.addAction(action)
-
-        QgsMessageLog.logMessage("In getFeatureDetails: showing menu?", tag="TOMs panel")
-
-        clicked_action = self.menu.exec_(self.iface.mapCanvas().mapToGlobal(self.event.pos()))
-        QgsMessageLog.logMessage(("In getFeatureDetails:clicked_action: " + str(clicked_action)), tag="TOMs panel")
-
-        if clicked_action is not None:
-
-            QgsMessageLog.logMessage(("In getFeatureDetails:clicked_action: " + str(clicked_action.text())),
-                                     tag="TOMs panel")
-            idxList = self.getIdxFromGeometryID(clicked_action.text(), featureList)
-
-            QgsMessageLog.logMessage("In getFeatureDetails: idx = " + str(idxList), tag="TOMs panel")
-
-            if idxList >= 0:
-                QgsMessageLog.logMessage("In getFeatureDetails: feat = " + str(featureList[idxList].attribute('id')),
-                                         tag="TOMs panel")
-                return featureList[idxList], layerList[idxList]
-
-        QgsMessageLog.logMessage(("In getFeatureDetails. No action found."), tag="TOMs panel")
-
-        return None, None
-
-
-    def getIdxFromGeometryID(self, selectedGeometryID, featureList):
-        #
-        QgsMessageLog.logMessage("In getIdxFromGeometryID", tag="TOMs panel")
-
-        idx = -1
-        for feature in featureList:
-            idx = idx + 1
-            if feature.attribute("id") == selectedGeometryID:
-                return idx
-
-        pass
-
-        return idx
-
-#############################################################################
-class CreateSignTool(QgsMapToolCapture, demandFormUtils):
-    # helpful link - http://apprize.info/python/qgis/7.html ??
-    def __init__(self, iface, layer):
-
-        QgsMessageLog.logMessage(("In CreateSignTool - init."), tag="TOMs panel")
-
-        QgsMapToolCapture.__init__(self, iface.mapCanvas(), iface.cadDockWidget())
-        #https: // qgis.org / api / classQgsMapToolCapture.html
-        canvas = iface.mapCanvas()
-        self.iface = iface
-        self.layer = layer
-
-        QgsMessageLog.logMessage("In CreateSignTool - geometryType for " + str(self.layer.name()) + ": " + str(self.layer.geometryType()), tag="TOMs panel")
-
-        if self.layer.geometryType() == 0: # PointGeometry:
-            self.setMode(CreateSignTool.CapturePoint)
-        elif self.layer.geometryType() == 1: # LineGeometry:
-            self.setMode(CreateSignTool.CaptureLine)
-        elif self.layer.geometryType() == 2: # PolygonGeometry:
-            self.setMode(CreateSignTool.CapturePolygon)
-        else:
-            QgsMessageLog.logMessage(("In CreateSignTool - No geometry type found. EXITING ...."), tag="TOMs panel")
-            return
-
-        QgsMessageLog.logMessage(("In CreateSignTool - mode set."), tag="TOMs panel")
-
-        # Seems that this is important - or at least to create a point list that is used later to create Geometry
-        self.sketchPoints = self.points()
-        #self.setPoints(self.sketchPoints)  ... not sure when to use this ??
-
-        # Set up rubber band. In current implementation, it is not showing feeback for "next" location
-
-        self.rb = self.createRubberBand(QGis.Line)  # what about a polygon ??
-
-        self.currLayer = self.currentVectorLayer()
-
-        QgsMessageLog.logMessage(("In CreateSignTool - init. Curr layer is " + str(self.currLayer.name()) + "Incoming: " + str(self.layer)), tag="TOMs panel")
-
-        # set up snapping configuration   *******************
-
-        self.snappingUtils = QgsSnappingUtils()
-
-        #self.snappingUtils.setLayers([snapping_layer1, snapping_layer2, snapping_layer3])
-
-        self.snappingUtils.setSnapToMapMode(QgsSnappingUtils.SnapAdvanced)
-
-        #self.TOMsTracer.setMaxFeatureCount(1000)
-        self.lastPoint = None
-
-        # set up function to be called when capture is complete
-        #self.onCreateRestriction = onCreateRestriction
-
-    def cadCanvasReleaseEvent(self, event):
-        QgsMapToolCapture.cadCanvasReleaseEvent(self, event)
-        QgsMessageLog.logMessage(("In Create - cadCanvasReleaseEvent"), tag="TOMs panel")
-
-        if event.button() == Qt.LeftButton:
-            if not self.isCapturing():
-                self.startCapturing()
-
-            checkSnapping = event.isSnapped
-            QgsMessageLog.logMessage("In Create - cadCanvasReleaseEvent: checkSnapping = " + str(checkSnapping), tag="TOMs panel")
-
-            # Now wanting to add point(s) to new shape. Take account of snapping and tracing
-
-            self.currPoint = event.snapPoint(1)    #  1 is value of QgsMapMouseEvent.SnappingMode (not sure where this is defined)
-            self.lastEvent = event
-            # If this is the first point, add and k
-
-            nrPoints = self.size()
-            res = None
-
-            if not self.lastPoint:
-
-                self.result = self.addVertex(self.currPoint)
-                QgsMessageLog.logMessage("In Create - cadCanvasReleaseEvent: adding vertex 0 " + str(self.result), tag="TOMs panel")
-
-            self.lastPoint = self.currPoint
-
-            QgsMessageLog.logMessage(("In Create - cadCanvasReleaseEvent (AddVertex/Line) Result: " + str(self.result) + " X:" + str(self.currPoint.x()) + " Y:" + str(self.currPoint.y())), tag="TOMs panel")
-
-            if self.layer.geometryType() == 0:
-                self.getPointsCaptured()
-
-        elif (event.button() == Qt.RightButton):
-            # Stop capture when right button or escape key is pressed
-
-            self.getPointsCaptured()
-
-            # Need to think about the default action here if none of these buttons/keys are pressed.
-
-        pass
-
-    def keyPressEvent(self, event):
-        if (event.key() == Qt.Key_Backspace) or (event.key() == Qt.Key_Delete) or (event.key() == Qt.Key_Escape):
-            self.undo()
-            pass
-        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-            pass
-            # Need to think about the default action here if none of these buttons/keys are pressed.
-
-    def getPointsCaptured(self):
-        QgsMessageLog.logMessage(("In CreateSignTool - getPointsCaptured"), tag="TOMs panel")
-
-        # Check the number of points
-        self.nrPoints = self.size()
-        QgsMessageLog.logMessage(("In CreateSignTool - getPointsCaptured; Stopping: " + str(self.nrPoints)),
-                                 tag="TOMs panel")
-
-        self.sketchPoints = self.points()
-
-        for point in self.sketchPoints:
-            QgsMessageLog.logMessage(("In CreateSignTool - getPointsCaptured X:" + str(point.x()) + " Y: " + str(point.y())), tag="TOMs panel")
-
-        # stop capture activity
-        self.stopCapturing()
-
-        if self.nrPoints > 0:
-
-            # take points from the rubber band and copy them into the "feature"
-
-            fields = self.layer.dataProvider().fields()
-            feature = QgsFeature()
-            feature.setFields(fields)
-
-            QgsMessageLog.logMessage(("In CreateRestrictionTool. getPointsCaptured, layerType: " + str(self.layer.geometryType())), tag="TOMs panel")
-
-            if self.layer.geometryType() == 0:  # Point
-                feature.setGeometry(QgsGeometry.fromPoint(self.sketchPoints[0]))
-            elif self.layer.geometryType() == 1:  # Line
-                feature.setGeometry(QgsGeometry.fromPolyline(self.sketchPoints))
-            elif self.layer.geometryType() == 2:  # Polygon
-                feature.setGeometry(QgsGeometry.fromPolygon([self.sketchPoints]))
-                #feature.setGeometry(QgsGeometry.fromPolygon(self.sketchPoints))
-            else:
-                QgsMessageLog.logMessage(("In CreateRestrictionTool - no geometry type found"), tag="TOMs panel")
-                return
-
-            QgsMessageLog.logMessage(("In Create - getPointsCaptured; geometry prepared; " + str(feature.geometry().exportToWkt())),
-                                     tag="TOMs panel")
-
-            if self.layer.name() == "ConstructionLines":
-                self.layer.addFeature(feature)
-                pass
-            else:
-
-                # set any geometry related attributes ...
-
-                self.setDefaultRestrictionDetails(feature, self.layer)
-
-                QgsMessageLog.logMessage("In In CreateRestrictionTool - getPointsCaptured. currRestrictionLayer: " + str(self.layer.name()),
-                                         tag="TOMs panel")
-
-                dialog = self.iface.getFeatureForm(self.layer, feature)
-                self.setupDemandDialog(dialog, self.layer, feature)  # connects signals, etc
-                dialog.show()
-
-            pass
 
 class formCamera(QObject):
     notifyPhotoTaken = QtCore.pyqtSignal(str)
