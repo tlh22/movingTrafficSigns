@@ -1,6 +1,8 @@
 *.pyc
 .idea
 *.orig
+.project
+.pydevproject
 # Windows thumbnail cache files
 Thumbs.db
 ehthumbs.db

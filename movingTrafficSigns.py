@@ -351,19 +351,19 @@ class movingTrafficSigns:
     @pyqtSlot(str)
     def actionToggled(self, answer):
         QgsMessageLog.logMessage(
-            ("In actionToggled: ..."),
+            ("In actionToggled: *********************************"),
             tag="TOMs panel")
 
     @pyqtSlot(str)
     def actionTriggered(self, answer):
         QgsMessageLog.logMessage(
-            ("In actionTriggered: ..."),
+            ("In actionTriggered: *********************************"),
             tag="TOMs panel")
 
     @pyqtSlot(str)
-    def layerEditingStopped(self, answer):
+    def layerEditingStopped(self):
         QgsMessageLog.logMessage(
-            ("In layerEditingStopped: ..."),
+            ("In layerEditingStopped: ********************************"),
             tag="TOMs panel")
 
     @pyqtSlot(str)
@@ -380,9 +380,9 @@ class movingTrafficSigns:
                                             "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
             return
 
-        fields = self.currLayer.dataProvider().fields()
-        feature = QgsFeature()
-        feature.setFields(fields)
+        fields = self.currLayer.fields()
+        feature = QgsFeature(fields)
+        #feature.setFields(fields)
 
         if self.currLayer.geometryType() == 0:  # Point
             feature.setGeometry(QgsGeometry.fromPoint(self.sketchPoints[0]))
@@ -483,6 +483,7 @@ class demandFormUtils():
         QgsMessageLog.logMessage("In setDefaultRestrictionDetails: curr user name: " + self.userName, tag="TOMs panel")
 
         try:
+            #currRestrictionLayer.changeAttributeValue(currRestriction.id(), currRestriction.fieldNameIndex("Signs_DateTime"), QDateTime.currentDateTime())
             currRestriction.setAttribute("Signs_DateTime", QDateTime.currentDateTime())
             currRestriction.setAttribute("Surveyor", self.userName)
         except:
@@ -566,14 +567,13 @@ class demandFormUtils():
 
         QgsMessageLog.logMessage("In onSaveDemandDetails: Before commit", tag="TOMs panel")
 
-        reply = QMessageBox.information(None, "Information",
+        """reply = QMessageBox.information(None, "Information",
                                         "Wait a moment ...",
-                                        QMessageBox.Ok)
+                                        QMessageBox.Ok)"""
         attrs1 = currFeature.attributes()
         QgsMessageLog.logMessage("In onSaveDemandDetails: currRestriction: " + str(attrs1),
                                  tag="TOMs panel")
 
-        self.iface.activeLayer()
         QgsMessageLog.logMessage(
             ("In onSaveDemandDetails. geometry: " + str(currFeature.geometry().exportToWkt())),
             tag="TOMs panel")
@@ -582,11 +582,12 @@ class demandFormUtils():
                                  tag="TOMs panel")
 
         #Test
-        status = dialog.accept()
+        #status = dialog.attributeForm().save()
+        #status = dialog.accept()
 
-        reply = QMessageBox.information(None, "Information",
+        """reply = QMessageBox.information(None, "Information",
                                         "And another ... iseditable: " + str(currFeatureLayer.isEditable()),
-                                        QMessageBox.Ok)
+                                        QMessageBox.Ok)"""
 
         try:
             currFeatureLayer.commitChanges()
@@ -597,7 +598,7 @@ class demandFormUtils():
 
         QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
 
-
+        status = dialog.reject()
 
     def onRejectDemandDetailsFromForm(self, currFeature, currFeatureLayer, dialog):
         QgsMessageLog.logMessage("In onRejectDemandDetailsFromForm", tag="TOMs panel")

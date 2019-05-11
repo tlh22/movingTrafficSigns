@@ -178,7 +178,7 @@ class GeometryInfoMapTool(QgsMapToolIdentify):
 
             feature, layer = self.getFeatureDetails(featureList, layerList)
 
-            QgsMessageLog.logMessage("In findNearestFeatureAt: feature: " + str(feature.attribute('GeometryID')),
+            QgsMessageLog.logMessage("In findNearestFeatureAt: feature: " + str(feature.attribute('id')),
                                      tag="TOMs panel")
 
             return feature, layer
