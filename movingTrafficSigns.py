@@ -305,12 +305,18 @@ class movingTrafficSigns(demandFormUtils):
             "In showSignDetails ... Layer: " + str(closestLayer.name()),
             tag="TOMs panel")
 
-        if closestLayer.isEditable() == False:
-
-            if closestLayer.startEditing() == False:
+        if closestLayer.isEditable() == True:
+            if closestLayer.commitChanges() == False:
                 reply = QMessageBox.information(None, "Information",
-                                                "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
-                return
+                                                "Problem committing changes" + str(closestLayer.commitErrors()),
+                                                QMessageBox.Ok)
+            else:
+                QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
+
+        if self.currLayer.startEditing() == False:
+            reply = QMessageBox.information(None, "Information",
+                                            "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
+            return
 
         # TODO: Sort out this for UPDATE
         # self.setDefaultRestrictionDetails(closestFeature, closestLayer)
@@ -470,12 +476,18 @@ class movingTrafficSigns(demandFormUtils):
             "In removeSign ... Layer: " + str(closestLayer.name()),
             tag="TOMs panel")
 
-        if closestLayer.isEditable() == False:
-
-            if self.currLayer.startEditing() == False:
+        if closestLayer.isEditable() == True:
+            if closestLayer.commitChanges() == False:
                 reply = QMessageBox.information(None, "Information",
-                                                "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
-                return
+                                                "Problem committing changes" + str(closestLayer.commitErrors()),
+                                                QMessageBox.Ok)
+            else:
+                QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
+
+        if self.currLayer.startEditing() == False:
+            reply = QMessageBox.information(None, "Information",
+                                            "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
+            return
 
         # TODO: Sort out this for UPDATE
         # self.setDefaultRestrictionDetails(closestFeature, closestLayer)
