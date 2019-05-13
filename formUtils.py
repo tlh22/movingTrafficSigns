@@ -100,7 +100,7 @@ class demandFormUtils():
     def setDefaultRestrictionDetails(self, currRestriction, currRestrictionLayer):
         QgsMessageLog.logMessage("In setDefaultRestrictionDetails: ", tag="TOMs panel")
 
-        self.userName = (QgsExpressionContextUtils.globalScope().variable("user_full_name"))
+        self.userName = (QgsExpressionContextUtils.globalScope().variable("user_account_name"))
         QgsMessageLog.logMessage("In setDefaultRestrictionDetails: curr user name: " + self.userName, tag="TOMs panel")
 
         try:
@@ -182,6 +182,10 @@ class demandFormUtils():
                                  tag="TOMs panel")
 
         if currFeatureID > 0:   # Not sure what this value should if the feature has not been created ...
+
+            # TODO: Sort out this for UPDATE
+            self.setDefaultRestrictionDetails(currFeature, currFeatureLayer)
+
             status = currFeatureLayer.updateFeature(currFeature)
             QgsMessageLog.logMessage("In onSaveDemandDetails: updated Feature: ", tag="TOMs panel")
         else:

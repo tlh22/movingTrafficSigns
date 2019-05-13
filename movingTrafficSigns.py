@@ -318,9 +318,6 @@ class movingTrafficSigns(demandFormUtils):
                                             "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
             return
 
-        # TODO: Sort out this for UPDATE
-        # self.setDefaultRestrictionDetails(closestFeature, closestLayer)
-
         self.dialog = self.iface.getFeatureForm(closestLayer, closestFeature)
         self.setupDemandDialog(self.dialog, closestLayer, closestFeature)  # connects signals, etc
         self.dialog.show()
