@@ -219,10 +219,10 @@ class movingTrafficSigns(demandFormUtils):
             parent=self.iface.mainWindow())"""
 
 
-        """self.actionCreateMovingTrafficSign = QAction(QIcon(":/plugins/movingTrafficSigns/resources/mActionSetEndPoint.svg"),
+        self.actionCreateMovingTrafficSign = QAction(QIcon(":/plugins/movingTrafficSigns/resources/mActionSetEndPoint.svg"),
                                                     QCoreApplication.translate("MyPlugin", "Create moving traffic sign"),
                                                     self.iface.mainWindow())
-        self.actionCreateMovingTrafficSign.setCheckable(True)"""
+        self.actionCreateMovingTrafficSign.setCheckable(True)
 
         self.actionSignDetails = QAction(QIcon(":/plugins/movingTrafficSigns/resources/mActionGetInfo.svg"),
                                QCoreApplication.translate("MyPlugin", "Get Sign Details"),
@@ -234,16 +234,16 @@ class movingTrafficSigns(demandFormUtils):
                                self.iface.mainWindow())
         self.actionRemoveSign.setCheckable(True)
 
-        #self.toolbar.addAction(self.actionCreateMovingTrafficSign)
+        self.toolbar.addAction(self.actionCreateMovingTrafficSign)
         self.toolbar.addAction(self.actionSignDetails)
         self.toolbar.addAction(self.actionRemoveSign)
 
-        #self.actionCreateMovingTrafficSign.triggered.connect(self.doCreateMovingTrafficSign)
+        self.actionCreateMovingTrafficSign.triggered.connect(self.doCreateMovingTrafficSign)
         self.actionSignDetails.triggered.connect(self.doSignDetails)
         self.actionRemoveSign.triggered.connect(self.doRemoveSign)
 
-        #self.actionCreateMovingTrafficSign.toggled.connect(self.actionToggled)
-        #self.actionCreateMovingTrafficSign.triggered.connect(self.actionTriggered)
+        self.actionCreateMovingTrafficSign.toggled.connect(self.actionToggled)
+        self.actionCreateMovingTrafficSign.triggered.connect(self.actionTriggered)
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
@@ -323,7 +323,7 @@ class movingTrafficSigns(demandFormUtils):
         self.dialog.show()
 
 
-        """def doCreateMovingTrafficSign(self):
+    def doCreateMovingTrafficSign(self):
 
         QgsMessageLog.logMessage("In doCreateMovingTrafficSign", tag="TOMs panel")
 
@@ -337,7 +337,7 @@ class movingTrafficSigns(demandFormUtils):
 
             self.iface.setActiveLayer(self.currLayer)
 
-            #self.actionCreateMovingTrafficSign.setChecked(True)
+            self.actionCreateMovingTrafficSign.setChecked(True)
 
             self.mapTool = CreateSignTool(self.iface, self.currLayer)
 
@@ -359,7 +359,7 @@ class movingTrafficSigns(demandFormUtils):
             self.iface.mapCanvas().unsetMapTool(self.mapTool)
             del self.mapTool
             #self.mapTool = None
-            #self.actionCreateMovingTrafficSign.setChecked(False)"""
+            self.actionCreateMovingTrafficSign.setChecked(False)
 
     @pyqtSlot(str)
     def actionToggled(self, answer):

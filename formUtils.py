@@ -161,7 +161,7 @@ class demandFormUtils():
 
         self.photoDetails()
 
-    def onSaveDemandDetails(self, currFeature, currFeatureLayer, dialog1):
+    def onSaveDemandDetails(self, currFeature, currFeatureLayer, dialog):
         QgsMessageLog.logMessage("In onSaveDemandDetails: ", tag="TOMs panel")
 
         try:
@@ -181,7 +181,7 @@ class demandFormUtils():
         QgsMessageLog.logMessage("In onSaveDemandDetails: currFeatureID: " + str(currFeatureID),
                                  tag="TOMs panel")
 
-        if currFeatureID > 0:   # Not sure what this value should if the feature has not been created ...
+        """if currFeatureID > 0:   # Not sure what this value should if the feature has not been created ...
 
             # TODO: Sort out this for UPDATE
             self.setDefaultRestrictionDetails(currFeature, currFeatureLayer)
@@ -190,7 +190,7 @@ class demandFormUtils():
             QgsMessageLog.logMessage("In onSaveDemandDetails: updated Feature: ", tag="TOMs panel")
         else:
             status = currFeatureLayer.addFeature(currFeature)
-            QgsMessageLog.logMessage("In onSaveDemandDetails: added Feature: " + str(status), tag="TOMs panel")
+            QgsMessageLog.logMessage("In onSaveDemandDetails: added Feature: " + str(status), tag="TOMs panel")"""
 
         QgsMessageLog.logMessage("In onSaveDemandDetails: Before commit", tag="TOMs panel")
 
@@ -209,7 +209,7 @@ class demandFormUtils():
                                  tag="TOMs panel")
 
         #Test
-        #status = dialog.attributeForm().save()
+        status = dialog.attributeForm().save()
         #status = dialog.accept()
         #status = dialog.accept()
 
@@ -218,6 +218,11 @@ class demandFormUtils():
                                         QMessageBox.Ok)"""
 
         #currFeatureLayer.blockSignals(True)
+
+        if currFeatureID == 0:
+            self.iface.mapCanvas().unsetMapTool(self.iface.mapCanvas().mapTool())
+            QgsMessageLog.logMessage("In onSaveDemandDetails: mapTool unset",
+                                     tag="TOMs panel")
 
         try:
             currFeatureLayer.commitChanges()
@@ -228,7 +233,7 @@ class demandFormUtils():
 
         QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
 
-        status = self.dialog.close()
+        status = dialog.close()
         #status = dialog.accept()
         #QgsMessageLog.logMessage("In onSaveDemandDetails: dialog reject: " + str(status), tag="TOMs panel")
 
