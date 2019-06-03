@@ -74,7 +74,9 @@ from .formUtils import demandFormUtils
 try:
     import cv2
 except ImportError:
-    None
+    cv2_available = False
+else:
+    cv2_available = True
 
 class movingTrafficSigns(demandFormUtils):
     """QGIS Plugin Implementation."""
@@ -313,10 +315,13 @@ class movingTrafficSigns(demandFormUtils):
             else:
                 QgsMessageLog.logMessage("In onSaveDemandDetails: changes committed", tag="TOMs panel")
 
-        if self.currLayer.startEditing() == False:
-            reply = QMessageBox.information(None, "Information",
+        if closestLayer.startEditing() == False:
+            # Set different form
+            #closestLayer.editFormConfig().setUiForm(...)
+            """reply = QMessageBox.information(None, "Information",
                                             "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
-            return
+            return"""
+            pass
 
         self.dialog = self.iface.getFeatureForm(closestLayer, closestFeature)
         self.setupDemandDialog(self.dialog, closestLayer, closestFeature)  # connects signals, etc
@@ -332,6 +337,16 @@ class movingTrafficSigns(demandFormUtils):
         if self.actionCreateMovingTrafficSign.isChecked():
 
             QgsMessageLog.logMessage("In doCreateMovingTrafficSign - tool activated", tag="TOMs panel")
+
+            self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
+
+            if self.currLayer.startEditing() == False:
+                reply = QMessageBox.information(None, "Information",
+                                                "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
+                self.actionCreateMovingTrafficSign.setChecked(False)
+                return
+
+            self.iface.setActiveLayer(self.currLayer)
 
             self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
 
@@ -439,6 +454,12 @@ class movingTrafficSigns(demandFormUtils):
             QgsMessageLog.logMessage("In doSignDetails - tool activated", tag="TOMs panel")
 
             self.currLayer = QgsMapLayerRegistry.instance().mapLayersByName("MovingTrafficSigns")[0]
+
+            if self.currLayer.startEditing() == False:
+                reply = QMessageBox.information(None, "Information",
+                                                "Could not start transaction on " + self.currLayer.name(), QMessageBox.Ok)
+                self.actionRemoveSign.setChecked(False)
+                return
 
             self.iface.setActiveLayer(self.currLayer)
             if not self.actionRemoveSign.isChecked():

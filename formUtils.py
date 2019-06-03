@@ -67,7 +67,9 @@ import time
 try:
     import cv2
 except ImportError:
-    None
+    cv2_available = False
+else:
+    cv2_available = True
 
 class demandFormUtils():
     #signToolChanged = QtCore.pyqtSignal()
@@ -335,14 +337,15 @@ class demandFormUtils():
                 FIELD1.setScaledContents(True)
                 QgsMessageLog.logMessage("In photoDetails. Photo1: " + str(newPhotoFileName1), tag="TOMs panel")
 
-            START_CAMERA_1 = self.demandDialog.findChild(QPushButton, "startCamera1")
-            TAKE_PHOTO_1 = self.demandDialog.findChild(QPushButton, "getPhoto1")
-            TAKE_PHOTO_1.setEnabled(False)
+            if cv2_available == True:
+                START_CAMERA_1 = self.demandDialog.findChild(QPushButton, "startCamera1")
+                TAKE_PHOTO_1 = self.demandDialog.findChild(QPushButton, "getPhoto1")
+                TAKE_PHOTO_1.setEnabled(False)
 
-            self.camera1 = formCamera(path_absolute, newPhotoFileName1)
-            START_CAMERA_1.clicked.connect(
-                functools.partial(self.camera1.useCamera, START_CAMERA_1, TAKE_PHOTO_1, FIELD1))
-            self.camera1.notifyPhotoTaken.connect(functools.partial(self.savePhotoTaken, idx1))
+                self.camera1 = formCamera(path_absolute, newPhotoFileName1)
+                START_CAMERA_1.clicked.connect(
+                    functools.partial(self.camera1.useCamera, START_CAMERA_1, TAKE_PHOTO_1, FIELD1))
+                self.camera1.notifyPhotoTaken.connect(functools.partial(self.savePhotoTaken, idx1))
 
         if FIELD2:
             QgsMessageLog.logMessage("In photoDetails. FIELD 2 exisits",
@@ -364,14 +367,15 @@ class demandFormUtils():
                 FIELD2.setScaledContents(True)
                 QgsMessageLog.logMessage("In photoDetails. Photo2: " + str(newPhotoFileName2), tag="TOMs panel")
 
-            START_CAMERA_2 = self.demandDialog.findChild(QPushButton, "startCamera2")
-            TAKE_PHOTO_2 = self.demandDialog.findChild(QPushButton, "getPhoto2")
-            TAKE_PHOTO_2.setEnabled(False)
+            if cv2_available == True:
+                START_CAMERA_2 = self.demandDialog.findChild(QPushButton, "startCamera2")
+                TAKE_PHOTO_2 = self.demandDialog.findChild(QPushButton, "getPhoto2")
+                TAKE_PHOTO_2.setEnabled(False)
 
-            self.camera2 = formCamera(path_absolute, newPhotoFileName2)
-            START_CAMERA_2.clicked.connect(
-                functools.partial(self.camera2.useCamera, START_CAMERA_2, TAKE_PHOTO_2, FIELD2))
-            self.camera2.notifyPhotoTaken.connect(functools.partial(self.savePhotoTaken, idx2))
+                self.camera2 = formCamera(path_absolute, newPhotoFileName2)
+                START_CAMERA_2.clicked.connect(
+                    functools.partial(self.camera2.useCamera, START_CAMERA_2, TAKE_PHOTO_2, FIELD2))
+                self.camera2.notifyPhotoTaken.connect(functools.partial(self.savePhotoTaken, idx2))
 
         if FIELD3:
             QgsMessageLog.logMessage("In photoDetails. FIELD 3 exisits",
@@ -397,14 +401,15 @@ class demandFormUtils():
                 FIELD3.setScaledContents(True)
                 QgsMessageLog.logMessage("In photoDetails. Photo3: " + str(newPhotoFileName3), tag="TOMs panel")
 
-            START_CAMERA_3 = self.demandDialog.findChild(QPushButton, "startCamera3")
-            TAKE_PHOTO_3 = self.demandDialog.findChild(QPushButton, "getPhoto3")
-            TAKE_PHOTO_3.setEnabled(False)
+            if cv2_available == True:
+                START_CAMERA_3 = self.demandDialog.findChild(QPushButton, "startCamera3")
+                TAKE_PHOTO_3 = self.demandDialog.findChild(QPushButton, "getPhoto3")
+                TAKE_PHOTO_3.setEnabled(False)
 
-            self.camera3 = formCamera(path_absolute, newPhotoFileName3)
-            START_CAMERA_3.clicked.connect(
-                functools.partial(self.camera3.useCamera, START_CAMERA_3, TAKE_PHOTO_3, FIELD3))
-            self.camera3.notifyPhotoTaken.connect(functools.partial(self.savePhotoTaken, idx3))
+                self.camera3 = formCamera(path_absolute, newPhotoFileName3)
+                START_CAMERA_3.clicked.connect(
+                    functools.partial(self.camera3.useCamera, START_CAMERA_3, TAKE_PHOTO_3, FIELD3))
+                self.camera3.notifyPhotoTaken.connect(functools.partial(self.savePhotoTaken, idx3))
 
         pass
 
